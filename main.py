@@ -3,7 +3,11 @@
 from itertools import islice
 from datetime import datetime
 import os
+import http.server
 import socketserver
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
+import json
 
 
 def sort_condition(x: list) -> str:
@@ -65,7 +69,7 @@ def merge_files(filename: str, files: list) -> int:
     """This function merge sorted many files in a list to big sorted
      file. Algorithm description: open all files, find min string
      for conditions, add to result. Index k added to identify the file
-     from which the line was added.
+     from which the line was added. It will remove files after work
         :param str filename:  Result sorted file name
         :param list files: List of sorted files
         :return: it could return some exception cause of I/O and
@@ -96,7 +100,6 @@ def merge_files(filename: str, files: list) -> int:
             lines_to_print += [tmp.split(',') + [min_line[3]]]
         for file in opened:
             file.close()
-    # remove temporary files
     for each in files:
         if os.path.isfile(each):
             os.remove(each)
@@ -204,91 +207,88 @@ def search_in_file(sorted_filename: str,
                   key=lambda x: x[1])
 
 
-class MyTCPHandler(socketserver.BaseRequestHandler):
-    """
-    Класс обработчика запросов для сервера.
-    Он создается один раз при каждом подключении к серверу и должен
-    Переопределить метод `handle()` для реализации связи с клиентом.
-    """
-    def handle(self):
-        # self.request - это TCP-сокет, подключенный к клиенту
-        self.data = self.request.recv(1024).strip()
-        print(f"{self.client_address[0]} отправил:")
-        data = self.data.decode('utf-8')
-        print(data)
-        # отправим те же данные обратно, но в верхнем регистре
-        self.request.sendall(data.upper().encode('utf-8'))
+class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def response(self, status) -> None:
+        self.send_response(status)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+    def do_GET(self) -> None:
+        query = parse_qs(urlparse(self.path).query)
+        query_sku = query['sku'][0] if 'sku' in query else ''
+        query_rank = query['rank'][0] if 'rank' in query else 0.0
+        try:
+            query_rank = float(query_rank)
+        except ValueError:
+            query_rank = 0.0
+        recommends = search_in_file(sorted_filename=sorted_file,
+                                    index_dct=all_sku_dct,
+                                    sku=query_sku,
+                                    rank=query_rank)
+        self.response(400) if not recommends else self.response(200)
+        self.wfile.write(json.dumps(recommends).encode('utf-8'))
 
 
-# we should have permissions to read/write here
-data_path = 'C:/Users/Dmitrii/Documents/Conda/MyProjects/MVideo/data/'
-index_file = data_path + 'index.csv'
-sorted_file = data_path + 'result.csv'
-'''
----------Steps split, merge, create not needed---------
-------if you run it once without some I/O errors-------
-'''
-input_file = data_path + 'recommends.csv'
-lines_in_little_file = 3 * 10 ** 6
-start_time = datetime.now()
-print(f'Time is {datetime.now()}\n'
-      'First step is split input file into many'
-      ' little sorted files.\nIts about 4 minutes long')
-out_files = split_to_sorted_files(filename=input_file,
-                                  path_to_save=data_path,
-                                  read_buffer=lines_in_little_file)
-print(f'\033[92mFirst step ends in '
-      f'{datetime.now() - start_time}\033[0m')
-start_time = datetime.now()
-print(f'Time is {datetime.now()}\n'
-      f'Second step is merge little files to big sorted\n'
-      'I hope it will be a bit faster')
-# TODO: Is it possible to create index here?
-merge_files(filename=sorted_file, files=out_files)
-print(f'Time is {datetime.now()}\n'
-      f'\033[92mSecond step ends in '
-      f'{datetime.now() - start_time}\033[0m')
-# TODO: As a variant - load index with start + end value from
-#  sorted file could be good for lower space, but program will
-#  load a bit slower
-start_time = datetime.now()
-print('Third step is create index file for sorted file\n'
-      'This step will be really faster..')
-create_index(sorted_file_name=sorted_file,
-             index_file_name=index_file)
-print(f'Time is {datetime.now()}\n'
-      f'\033[92mThird step ends in '
-      f'{datetime.now() - start_time}\033[0m')
-'''
-----Preparation steps ended, you could comment them----
-------if you run it once without some I/O errors-------
-'''
-start_time = datetime.now()
-print('Last step is load index file into memory\n'
-      'Do not worry its much faster than first three..')
-all_sku_dct = {}
-index_load(index_filename=index_file,
-           dct=all_sku_dct)
-print(f'Time is {datetime.now()}\n'
-      f'\033[92mLast step ends in '
-      f'{datetime.now() - start_time}\033[0m\n'
-      f'It will be start server right now on port 5050')
-# search sku in dictionary + get result from sorted file
-query_sku = 'zzz80YZGlk'
-# its able to remove variable query_rank and function
-# will find values with rank higher than 0.0
-query_rank = 0.7
-results = search_in_file(sorted_filename=sorted_file,
-                         index_dct=all_sku_dct,
-                         sku=query_sku,
-                         rank=query_rank)
+def run_server(port: int) -> None:
+    handler_object = HttpRequestHandler
+    my_server = socketserver.TCPServer(("", port), handler_object)
+    print(f'Server running on http://localhost:{port}')
+    my_server.serve_forever()
 
-HOST, PORT = "localhost", 5050
-# Создаем сервер, привязанный к `localhost` на порту 5050
-with socketserver.TCPServer((HOST, PORT), MyTCPHandler) as server:
-    # Активируем сервер. Работа будет продолжаться до тех пор,
-    # пока не прервать программу при помощи Ctrl-C
-    server.serve_forever()
 
-# print answer as a list of tuples
-print(results)
+if __name__ == '__main__':
+    data_path = 'C:/Users/Dmitrii/Documents/Conda/' \
+                'MyProjects/MVideo/data/'
+    index_file = data_path + 'index.csv'
+    sorted_file = data_path + 'result.csv'
+    server_port = 8080
+    '''
+    ---------Steps split, merge, create not needed---------
+    ------if you run it once without some I/O errors-------
+    '''
+    input_file = data_path + 'recommends.csv'
+    lines_in_little_file = 3 * 10 ** 6
+    start_time = datetime.now()
+    print(f'Time is {datetime.now()}\n'
+          'First step is split input file into many'
+          ' little sorted files.\nIts about 4 minutes long')
+    out_files = split_to_sorted_files(filename=input_file,
+                                      path_to_save=data_path,
+                                      read_buffer=lines_in_little_file)
+    print(f'\033[92mFirst step ends in '
+          f'{datetime.now() - start_time}\033[0m')
+    start_time = datetime.now()
+    print(f'Time is {datetime.now()}\n'
+          f'Second step is merge little files to big sorted\n'
+          'I hope it will be a bit faster')
+    # TODO: Is it possible to create index here?
+    merge_files(filename=sorted_file, files=out_files)
+    print(f'Time is {datetime.now()}\n'
+          f'\033[92mSecond step ends in '
+          f'{datetime.now() - start_time}\033[0m')
+    # TODO: As a variant - load index with start + end value from
+    #  sorted file could be good for lower space, but program will
+    #  load a bit slower
+    start_time = datetime.now()
+    print('Third step is create index file for sorted file\n'
+          'This step will be really faster..')
+    create_index(sorted_file_name=sorted_file,
+                 index_file_name=index_file)
+    print(f'Time is {datetime.now()}\n'
+          f'\033[92mThird step ends in '
+          f'{datetime.now() - start_time}\033[0m')
+    '''
+    ----Preparation steps ended, you could comment them----
+    ------if you run it once without some I/O errors-------
+    '''
+    start_time = datetime.now()
+    print('Last step is load index file into memory\n'
+          'Do not worry its much faster than first three..')
+    all_sku_dct = {}
+    index_load(index_filename=index_file,
+               dct=all_sku_dct)
+    print(f'Time is {datetime.now()}\n'
+          f'\033[92mLast step ends in '
+          f'{datetime.now() - start_time}\033[0m\n')
+
+    run_server(server_port)
