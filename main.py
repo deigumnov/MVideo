@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from itertools import islice
 from datetime import datetime
+from http.server import SimpleHTTPRequestHandler
+from itertools import islice
+from json import dumps
 import os
-import http.server
-import socketserver
-from urllib.parse import urlparse
-from urllib.parse import parse_qs
-import json
+from socketserver import TCPServer
+from urllib.parse import urlparse, parse_qs
 
 
 def sort_condition(x: list) -> str:
@@ -207,7 +206,7 @@ def search_in_file(sorted_filename: str,
                   key=lambda x: x[1])
 
 
-class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+class HttpRequestHandler(SimpleHTTPRequestHandler):
     def response(self, status) -> None:
         self.send_response(status)
         self.send_header('Content-type', 'application/json')
@@ -226,14 +225,14 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                                     sku=query_sku,
                                     rank=query_rank)
         self.response(400) if not recommends else self.response(200)
-        self.wfile.write(json.dumps(recommends).encode('utf-8'))
+        self.wfile.write(dumps(recommends).encode('utf-8'))
 
 
 def run_server(port: int) -> None:
-    handler_object = HttpRequestHandler
-    my_server = socketserver.TCPServer(("", port), handler_object)
+    object_handler = HttpRequestHandler
+    server = TCPServer(("", port), object_handler)
     print(f'Server running on http://localhost:{port}')
-    my_server.serve_forever()
+    server.serve_forever()
 
 
 if __name__ == '__main__':
@@ -259,8 +258,7 @@ if __name__ == '__main__':
           f'{datetime.now() - start_time}\033[0m')
     start_time = datetime.now()
     print(f'Time is {datetime.now()}\n'
-          f'Second step is merge little files to big sorted\n'
-          'I hope it will be a bit faster')
+          f'Second step is merge little files to big sorted')
     # TODO: Is it possible to create index here?
     merge_files(filename=sorted_file, files=out_files)
     print(f'Time is {datetime.now()}\n'
@@ -270,8 +268,7 @@ if __name__ == '__main__':
     #  sorted file could be good for lower space, but program will
     #  load a bit slower
     start_time = datetime.now()
-    print('Third step is create index file for sorted file\n'
-          'This step will be really faster..')
+    print('Third step is create index file for sorted file')
     create_index(sorted_file_name=sorted_file,
                  index_file_name=index_file)
     print(f'Time is {datetime.now()}\n'
@@ -282,13 +279,12 @@ if __name__ == '__main__':
     ------if you run it once without some I/O errors-------
     '''
     start_time = datetime.now()
-    print('Last step is load index file into memory\n'
-          'Do not worry its much faster than first three..')
+    print('Last step is load index file into memory')
     all_sku_dct = {}
     index_load(index_filename=index_file,
                dct=all_sku_dct)
     print(f'Time is {datetime.now()}\n'
-          f'\033[92mLast step ends in '
+          f'\033[92mLoading index completed in '
           f'{datetime.now() - start_time}\033[0m\n')
 
     run_server(server_port)
