@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from datetime import datetime
 from http.server import SimpleHTTPRequestHandler
 from itertools import islice
 from json import dumps
@@ -247,44 +246,18 @@ if __name__ == '__main__':
     '''
     input_file = data_path + 'recommends.csv'
     lines_in_little_file = 3 * 10 ** 6
-    start_time = datetime.now()
-    print(f'Time is {datetime.now()}\n'
-          'First step is split input file into many'
-          ' little sorted files.\nIts about 4 minutes long')
     out_files = split_to_sorted_files(filename=input_file,
                                       path_to_save=data_path,
                                       read_buffer=lines_in_little_file)
-    print(f'\033[92mFirst step ends in '
-          f'{datetime.now() - start_time}\033[0m')
-    start_time = datetime.now()
-    print(f'Time is {datetime.now()}\n'
-          f'Second step is merge little files to big sorted')
-    # TODO: Is it possible to create index here?
     merge_files(filename=sorted_file, files=out_files)
-    print(f'Time is {datetime.now()}\n'
-          f'\033[92mSecond step ends in '
-          f'{datetime.now() - start_time}\033[0m')
-    # TODO: As a variant - load index with start + end value from
-    #  sorted file could be good for lower space, but program will
-    #  load a bit slower
-    start_time = datetime.now()
-    print('Third step is create index file for sorted file')
     create_index(sorted_file_name=sorted_file,
                  index_file_name=index_file)
-    print(f'Time is {datetime.now()}\n'
-          f'\033[92mThird step ends in '
-          f'{datetime.now() - start_time}\033[0m')
     '''
     ----Preparation steps ended, you could comment them----
     ------if you run it once without some I/O errors-------
     '''
-    start_time = datetime.now()
-    print('Last step is load index file into memory')
     all_sku_dct = {}
     index_load(index_filename=index_file,
                dct=all_sku_dct)
-    print(f'Time is {datetime.now()}\n'
-          f'\033[92mLoading index completed in '
-          f'{datetime.now() - start_time}\033[0m\n')
 
     run_server(server_port)
