@@ -27,12 +27,12 @@ def split_to_sorted_files(filename: str,
                           read_buffer: int) -> list:
     """This function split big unsorted text file to many sorted files.
     Data in files sorted in ascending order.
-        :param str filename:  Big file name
+        :param str filename: name of big file
         :param str path_to_save: OS path, where little files will be
          saved
         :param int read_buffer: Number of lines in one little file
         :return: it could return some exception cause of I/O and
-         wrong path, but now its not used
+         wrong path, but its not uses now
         :rtype: int
     Examples:
         >>> big_file = 'C:/data/bigfile.csv'
@@ -71,7 +71,7 @@ def merge_files(filename: str, files: list) -> int:
         :param str filename:  Result sorted file name
         :param list files: List of sorted files
         :return: it could return some exception cause of I/O and
-         wrong path, but now its not used
+         wrong path, but its not uses now
         :rtype: int
     Examples:
         >>> result_filename = 'C:/data/result.csv'
@@ -110,7 +110,7 @@ def create_index(sorted_file_name: str, index_file_name: str) -> int:
         :param list index_file_name: This file will be created after
          work
         :return: it could return some exception cause of I/O and
-         wrong path, but now its not used
+         wrong path, but its not uses now
         :rtype: int
     Examples:
         >>> s_file_name = 'C:/data/sorted.csv'
@@ -147,7 +147,7 @@ def index_load(index_filename: str, dct: dict) -> int:
         :param str index_filename: Name of file with indexes
         :param dict dct: Dictionary for load indexes
         :return: it could return some exception cause of I/O and
-         wrong path, but now its not used
+         wrong path, but its not uses now
         :rtype: int
     Examples:
         >>> i_filename = 'C:/data/index.csv'
@@ -178,7 +178,7 @@ def search_in_file(sorted_filename: str,
         :param str sku: Searching key
         :param float rank: Function will seerch ranks higher than this
         :return: it could return some exception cause of I/O and
-         wrong path, but now its not used
+         wrong path, but its not uses now
         :rtype: list of tupples with values and rank for this sku
     Examples:
         >>> s_filename = 'C:/data/result.csv'
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     ------if you run it once without some I/O errors-------
     '''
     input_file = data_path + 'recommends.csv'
-    lines_in_little_file = 3 * 10 ** 6
+    lines_in_little_file = 1 * 10 ** 6
     out_files = split_to_sorted_files(filename=input_file,
                                       path_to_save=data_path,
                                       read_buffer=lines_in_little_file)
